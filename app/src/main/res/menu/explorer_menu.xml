@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item android:id="@+id/menuRoot"
+        android:title="Root: OFF"
+        app:showAsAction="ifRoom"/>
+
+    <item android:id="@+id/menuHome"
+        android:title="בית (/sdcard)"
+        app:showAsAction="never"/>
+
+    <item android:id="@+id/menuRootDir"
+        android:title="תיקייה ראשית (/)"
+        app:showAsAction="never"/>
+
+    <item android:id="@+id/menuNewFolder"
+        android:title="תיקייה חדשה"
+        app:showAsAction="never"/>
+
+    <item android:id="@+id/menuRefresh"
+        android:title="רענן"
+        app:showAsAction="never"/>
+</menu>
