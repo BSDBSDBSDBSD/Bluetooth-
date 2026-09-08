@@ -1,14 +1,10 @@
 # Build Result
-Date: Tue Sep  8 09:19:42 UTC 2026
+Date: Tue Sep  8 09:25:19 UTC 2026
 
 ## ❌ FAILED - No APK found
 
 ### Last 60 lines of build log:
 ```
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:146)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:135)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
 	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
 	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
 	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
@@ -31,13 +27,19 @@ Date: Tue Sep  8 09:19:42 UTC 2026
 	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
 	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.execution.plan.DefaultPlanExecutor.process(DefaultPlanExecutor.java:116)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.executeWithServices(DefaultTaskExecutionGraph.java:138)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.execute(DefaultTaskExecutionGraph.java:123)
-	at org.gradle.execution.SelectedTaskExecutionAction.execute(SelectedTaskExecutionAction.java:35)
-	at org.gradle.execution.DryRunBuildExecutionAction.execute(DryRunBuildExecutionAction.java:51)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:54)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:43)
+	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
+	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+	at org.jetbrains.kotlin.gradle.tasks.TasksUtilsKt.throwExceptionIfCompilationFailed(tasksUtils.kt:22)
+	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:144)
+	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:76)
+	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
+	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
+	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
 	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
 	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:199)
 	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
@@ -46,34 +48,50 @@ Date: Tue Sep  8 09:19:42 UTC 2026
 	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
 	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
 	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor.execute(BuildOperationFiringBuildWorkerExecutor.java:40)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$executeTasks$10(DefaultBuildLifecycleController.java:264)
-	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:266)
-	at org.gradle.internal.model.StateTransitionController.lambda$tryTransition$8(StateTransitionController.java:177)
-	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:44)
-	at org.gradle.internal.model.StateTransitionController.tryTransition(StateTransitionController.java:177)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.executeTasks(DefaultBuildLifecycleController.java:255)
-	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.runWork(DefaultBuildWorkGraphController.java:220)
+	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
+	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
+	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:170)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:187)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:120)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:162)
+	at org.gradle.internal.Factories$1.create(Factories.java:31)
 	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:249)
 	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:109)
-	at org.gradle.composite.internal.DefaultBuildController.doRun(DefaultBuildController.java:181)
-	at org.gradle.composite.internal.DefaultBuildController.access$000(DefaultBuildController.java:50)
-	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.run(DefaultBuildController.java:200)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
+	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:114)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:157)
+	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:126)
+	... 2 more
 
 
-BUILD FAILED in 38s
-1 actionable task: 1 executed
+BUILD FAILED in 1m 21s
+27 actionable tasks: 27 executed
 ```
 
 ### Errors:
 ```
-> Task :app:dataBindingMergeDependencyArtifactsDebug FAILED
+> Task :app:compileDebugKotlin FAILED
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/DeviceScanActivity.kt:9:27 Unresolved reference: lifecycleScope
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/DeviceScanActivity.kt:62:9 Unresolved reference: lifecycleScope
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/DeviceScanActivity.kt:63:34 Suspend function 'connect' should be called only from a coroutine or another suspend function
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:9:27 Unresolved reference: lifecycleScope
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:49:9 Unresolved reference: lifecycleScope
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:50:38 Suspend function 'getRootStatus' should be called only from a coroutine or another suspend function
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:64:9 Unresolved reference: lifecycleScope
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:65:33 Suspend function 'listDir' should be called only from a coroutine or another suspend function
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:102:9 Unresolved reference: lifecycleScope
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:103:35 Suspend function 'getFile' should be called only from a coroutine or another suspend function
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:150:17 Unresolved reference: lifecycleScope
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:151:38 Suspend function 'delete' should be called only from a coroutine or another suspend function
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:170:17 Unresolved reference: lifecycleScope
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:171:38 Suspend function 'rename' should be called only from a coroutine or another suspend function
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:189:17 Unresolved reference: lifecycleScope
+e: file:///home/runner/work/Bluetooth-/Bluetooth-/app/src/main/java/com/bsd/bluetoothexplorer/ui/FileExplorerActivity.kt:190:38 Suspend function 'mkdir' should be called only from a coroutine or another suspend function
 * Exception is:
-org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:dataBindingMergeDependencyArtifactsDebug'.
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:38)
-Caused by: com.android.builder.errors.EvalIssueException: Configuration `:app:debugRuntimeClasspath` contains AndroidX dependencies, but the `android.useAndroidX` property is not enabled, which may cause runtime issues.
+org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugKotlin'.
 	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-BUILD FAILED in 38s
+Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
+Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
+	at org.jetbrains.kotlin.gradle.tasks.TasksUtilsKt.throwExceptionIfCompilationFailed(tasksUtils.kt:22)
+BUILD FAILED in 1m 21s
 ```
