@@ -6,7 +6,6 @@ plugins {
 android {
     namespace 'com.bsd.bluetoothexplorer'
     compileSdk 33
-
     defaultConfig {
         applicationId "com.bsd.bluetoothexplorer"
         minSdk 28
@@ -14,34 +13,17 @@ android {
         versionCode 1
         versionName "1.0"
     }
-
     buildTypes {
-        release {
-            minifyEnabled false
-        }
-        debug {
-            minifyEnabled false
-        }
+        release { minifyEnabled false }
+        debug { minifyEnabled false }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = '17'
-    }
-    buildFeatures {
-        viewBinding true
-    }
-    lint {
-        abortOnError false
-    }
-}
-
-repositories {
-    google()
-    mavenCentral()
-    maven { url 'https://jitpack.io' }
+    kotlinOptions { jvmTarget = '17' }
+    buildFeatures { viewBinding true }
+    lint { abortOnError false }
 }
 
 dependencies {
