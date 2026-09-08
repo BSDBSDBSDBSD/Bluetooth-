@@ -2,7 +2,6 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
 }
-
 android {
     namespace 'com.bsd.bluetoothexplorer'
     compileSdk 33
@@ -15,7 +14,7 @@ android {
     }
     buildTypes {
         release { minifyEnabled false }
-        debug { minifyEnabled false }
+        debug   { minifyEnabled false }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
@@ -25,13 +24,13 @@ android {
     buildFeatures { viewBinding true }
     lint { abortOnError false }
 }
-
 dependencies {
     implementation 'androidx.core:core-ktx:1.10.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.recyclerview:recyclerview:1.3.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
     implementation 'com.github.topjohnwu.libsu:core:5.2.2'
     implementation 'com.github.topjohnwu.libsu:io:5.2.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
