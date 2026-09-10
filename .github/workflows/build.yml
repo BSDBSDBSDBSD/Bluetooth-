@@ -27,23 +27,23 @@ jobs:
       - name: Build APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug 2>&1 | tee build.log
-      - name: Release APK
+          set -o pipefail
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log; EC=${PIPESTATUS[0]}
+          if [ $EC -ne 0 ]; then
+            echo "=== BUILD FAILED - Errors ==="
+            grep -E "^e:|error:|FAILED|Exception|Unresolved|Could not" build.log | head -40
+            exit $EC
+          fi
+          APK=$(find . -name "app-debug.apk" | head -1)
+          echo "APK: $APK"
+      - name: Release
+        if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          APK_PATH=$(find . -name "app-debug.apk" | head -1)
-          if [ -z "$APK_PATH" ]; then
-            echo "APK not found! Build log:"
-            tail -50 build.log
-            exit 1
-          fi
-          echo "Found APK: $APK_PATH ($(du -h $APK_PATH | cut -f1))"
+          APK=$(find . -name "app-debug.apk" | head -1)
           TAG="v1.0-build-${{ github.run_number }}"
-          gh release create "$TAG" \
-            --title "גרסה ${{ github.run_number }}" \
-            --notes "APK מוכן להורדה" \
-            "$APK_PATH#app-debug.apk"
+          gh release create "$TAG" --title "גרסה ${{ github.run_number }}" --notes "APK מוכן" "$APK#app-debug.apk" 2>&1 || echo "Release may already exist"
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         if: always()
