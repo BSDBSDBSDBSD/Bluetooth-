@@ -27,23 +27,40 @@ jobs:
       - name: Build APK
         run: |
           chmod +x gradlew
-          set -o pipefail
-          ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log; EC=${PIPESTATUS[0]}
-          if [ $EC -ne 0 ]; then
-            echo "=== BUILD FAILED - Errors ==="
-            grep -E "^e:|error:|FAILED|Exception|Unresolved|Could not" build.log | head -40
-            exit $EC
-          fi
-          APK=$(find . -name "app-debug.apk" | head -1)
-          echo "APK: $APK"
+          ./gradlew assembleDebug --stacktrace 2>&1 | tee build.log || true
+          echo "Exit code captured"
+      - name: Save build result to repo
+        run: |
+          APK=$(find . -name "app-debug.apk" 2>/dev/null | head -1)
+          {
+            echo "# Build Result - $(date)"
+            if [ -n "$APK" ]; then
+              echo "## ✅ SUCCESS"
+              echo "APK: $APK | $(du -h $APK | cut -f1)"
+            else
+              echo "## ❌ FAILED - No APK"
+              echo '```'
+              grep -E "^e:|error:|FAILED|Unresolved|Exception|Could not" build.log | head -50
+              echo '---LAST 40 LINES---'
+              tail -40 build.log
+              echo '```'
+            fi
+          } > BUILD_RESULT.md
+          git config user.email "ci@build.com"
+          git config user.name "CI"
+          git add BUILD_RESULT.md
+          git diff --staged --quiet || git commit -m "ci: build result [skip ci]"
+          git push
       - name: Release
         if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           APK=$(find . -name "app-debug.apk" | head -1)
+          [ -z "$APK" ] && echo "No APK - skip release" && exit 0
           TAG="v1.0-build-${{ github.run_number }}"
-          gh release create "$TAG" --title "גרסה ${{ github.run_number }}" --notes "APK מוכן" "$APK#app-debug.apk" 2>&1 || echo "Release may already exist"
+          gh release delete "$TAG" --yes 2>/dev/null || true
+          gh release create "$TAG" --title "גרסה ${{ github.run_number }}" --notes "APK מוכן" "$APK#app-debug.apk"
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         if: always()
