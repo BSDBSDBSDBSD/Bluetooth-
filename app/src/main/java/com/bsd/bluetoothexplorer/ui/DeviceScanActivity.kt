@@ -12,12 +12,17 @@ import com.bsd.bluetoothexplorer.R
 import com.bsd.bluetoothexplorer.bluetooth.BluetoothClient
 import kotlinx.coroutines.launch
 
+// Singleton לשמירת החיבור
+object ClientHolder {
+    var client: BluetoothClient? = null
+    var remoteDeviceName: String = ""
+}
+
 class DeviceScanActivity : AppCompatActivity() {
 
     private lateinit var listView: ListView
     private lateinit var progressBar: ProgressBar
     private lateinit var tvHint: TextView
-    private lateinit var tvTitle: TextView
     private val client = BluetoothClient()
     private val devices = mutableListOf<BluetoothDevice>()
     private lateinit var listAdapter: DeviceListAdapter
@@ -38,7 +43,9 @@ class DeviceScanActivity : AppCompatActivity() {
         listView.divider = null
 
         loadPairedDevices()
-        listView.setOnItemClickListener { _, _, position, _ -> connectToDevice(devices[position]) }
+        listView.setOnItemClickListener { _, _, position, _ ->
+            connectToDevice(devices[position])
+        }
     }
 
     private fun loadPairedDevices() {
@@ -48,40 +55,32 @@ class DeviceScanActivity : AppCompatActivity() {
             Toast.makeText(this, "נדרשת הרשאת Bluetooth", Toast.LENGTH_LONG).show()
             emptySet()
         }
-
         devices.clear()
         devices.addAll(paired)
         listAdapter.notifyDataSetChanged()
-
         tvHint.text = if (devices.isEmpty())
-            "לא נמצאו מכשירים מזווגים.\nזווג מכשיר ב-Bluetooth של המכשיר ואז חזור."
+            "לא נמצאו מכשירים מזווגים.\nזווג מכשיר ב-Bluetooth ואז חזור."
         else
-            "${devices.size} מכשירים מזווגים — בחר מכשיר להתחברות:"
+            "${devices.size} מכשירים — בחר מכשיר להתחברות:"
     }
 
     private fun connectToDevice(device: BluetoothDevice) {
         progressBar.visibility = View.VISIBLE
-        tvHint.text = "מתחבר אל ${try { device.name } catch (e: SecurityException) { device.address }}..."
+        val name = try { device.name ?: device.address } catch (e: SecurityException) { device.address }
+        tvHint.text = "מתחבר אל $name..."
         listView.isEnabled = false
 
         lifecycleScope.launch {
-            val success = try {
-                client.connect(device)
-            } catch (e: Exception) {
-                false
-            }
-
+            val success = try { client.connect(device) } catch (e: Exception) { false }
             runOnUiThread {
                 progressBar.visibility = View.GONE
                 listView.isEnabled = true
                 if (success) {
                     ClientHolder.client = client
-                    ClientHolder.remoteDeviceName = try { device.name ?: device.address } catch (e: SecurityException) { device.address }
+                    ClientHolder.remoteDeviceName = name
                     startActivity(Intent(this@DeviceScanActivity, FileExplorerActivity::class.java))
                 } else {
                     tvHint.text = "❌ חיבור נכשל\nוודא שהאפליקציה פועלת במצב שרת במכשיר השני"
-                    Toast.makeText(this@DeviceScanActivity,
-                        "חיבור נכשל — האם השרת פועל?", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -93,12 +92,11 @@ class DeviceScanActivity : AppCompatActivity() {
     }
 }
 
-// Adapter מותאם עם עיצוב נכון
+// Adapter עם כתב לבן על רקע כהה
 class DeviceListAdapter(
     private val ctx: Context,
     private val devices: List<BluetoothDevice>
 ) : BaseAdapter() {
-
     override fun getCount() = devices.size
     override fun getItem(pos: Int) = devices[pos]
     override fun getItemId(pos: Int) = pos.toLong()
@@ -106,22 +104,15 @@ class DeviceListAdapter(
     override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
         val view = convertView ?: LayoutInflater.from(ctx)
             .inflate(R.layout.item_device, parent, false)
-
         val device = devices[pos]
-        val tvName = view.findViewById<TextView>(R.id.tvDeviceName)
-        val tvAddr = view.findViewById<TextView>(R.id.tvDeviceAddr)
-        val ivIcon = view.findViewById<android.widget.ImageView>(R.id.ivDeviceIcon)
-
-        try {
-            tvName.text = device.name ?: "מכשיר לא ידוע"
-            tvName.setTextColor(0xFFFFFFFF.toInt())
-        } catch (e: SecurityException) {
-            tvName.text = "מכשיר"
+        view.findViewById<TextView>(R.id.tvDeviceName).apply {
+            text = try { device.name ?: "מכשיר לא ידוע" } catch (e: SecurityException) { "מכשיר" }
+            setTextColor(0xFFFFFFFF.toInt())
         }
-        tvAddr.text = device.address
-        tvAddr.setTextColor(0xFF888888.toInt())
-        ivIcon.setImageResource(android.R.drawable.stat_sys_data_bluetooth)
-
+        view.findViewById<TextView>(R.id.tvDeviceAddr).apply {
+            text = device.address
+            setTextColor(0xFF888888.toInt())
+        }
         return view
     }
 }
