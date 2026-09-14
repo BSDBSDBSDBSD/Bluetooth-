@@ -5,7 +5,6 @@
     android:orientation="vertical"
     android:background="#0F1923">
 
-    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -14,16 +13,14 @@
         android:padding="20dp"
         android:background="#1A2535">
         <TextView
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:text="📁 סייר קבצים Bluetooth"
             android:textSize="20sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"/>
     </LinearLayout>
 
-    <!-- Root status card -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -31,8 +28,7 @@
         android:gravity="center_vertical"
         android:layout_margin="16dp"
         android:padding="14dp"
-        android:background="@drawable/card_bg"
-        android:layout_margin="16dp">
+        android:background="@drawable/card_bg">
         <TextView
             android:id="@+id/tvRootStatus"
             android:layout_width="0dp"
@@ -46,12 +42,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Root"
-            android:textColor="#FFFFFF"
-            android:thumbTint="#1DB954"
-            android:trackTint="#0D5C28"/>
+            android:textColor="#FFFFFF"/>
     </LinearLayout>
 
-    <!-- Status -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -75,7 +68,6 @@
             android:textSize="14sp"/>
     </LinearLayout>
 
-    <!-- Buttons -->
     <Button
         android:id="@+id/btnStartServer"
         android:layout_width="match_parent"
@@ -100,7 +92,6 @@
         android:backgroundTint="#2563EB"
         android:textColor="#FFFFFF"/>
 
-    <!-- Info -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -119,7 +110,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="1. במכשיר הנגיש: לחץ על הפעל שרת\n2. במכשיר המדפדף: לחץ על התחבר\n3. בחר את המכשיר מהרשימה\n4. תיפתח גישה לקבצים"
+            android:text="1. מכשיר שנגישים אליו: הפעל שרת\n2. מכשיר מדפדף: לחץ התחבר\n3. בחר מכשיר מהרשימה\n4. גלוש בקבצים"
             android:textColor="#AAAAAA"
             android:textSize="13sp"
             android:lineSpacingExtra="4dp"/>
