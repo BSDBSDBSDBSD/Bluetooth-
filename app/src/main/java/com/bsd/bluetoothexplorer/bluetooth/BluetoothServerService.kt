@@ -10,8 +10,10 @@ import com.bsd.bluetoothexplorer.model.BtCommand
 import com.bsd.bluetoothexplorer.model.BtResponse
 import com.bsd.bluetoothexplorer.root.RootManager
 import com.bsd.bluetoothexplorer.ui.MainActivity
+import com.bsd.bluetoothexplorer.wifi.WifiDirectManager
 import kotlinx.coroutines.*
 import java.io.*
+import java.net.ServerSocket
 import java.util.UUID
 
 class BluetoothServerService : Service() {
@@ -23,11 +25,14 @@ class BluetoothServerService : Service() {
         const val NOTIF_ID = 1001
         const val ACTION_START_SERVER = "START_SERVER"
         const val ACTION_STOP_SERVER = "STOP_SERVER"
+        const val WIFI_TCP_PORT = WifiDirectManager.SERVER_PORT
         var isRunning = false
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var serverSocket: BluetoothServerSocket? = null
+    private var tcpServerSocket: ServerSocket? = null
+    private var wifiDirect: WifiDirectManager? = null
     private var useRoot = false
 
     override fun onCreate() {
@@ -40,8 +45,24 @@ class BluetoothServerService : Service() {
         when (intent?.action) {
             ACTION_START_SERVER -> {
                 useRoot = intent.getBooleanExtra("use_root", false)
-                startForeground(NOTIF_ID, buildNotification("ממתין לחיבור..."))
-                startServer()
+                // Start foreground with its declared type; never let this crash the app.
+                val notif = buildNotification("ממתין לחיבור...")
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        startForeground(NOTIF_ID, notif, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+                    } else {
+                        startForeground(NOTIF_ID, notif)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "startForeground failed", e)
+                    try { startForeground(NOTIF_ID, notif) } catch (e2: Exception) {
+                        Log.e(TAG, "plain startForeground failed too", e2)
+                        stopSelf(); isRunning = false; return START_NOT_STICKY
+                    }
+                }
+                startServer()          // Bluetooth
+                startWifiTcpServer()   // WiFi (TCP)
+                startWifiDirectHost()  // direct Wi-Fi group, no router
                 isRunning = true
             }
             ACTION_STOP_SERVER -> {
@@ -53,39 +74,72 @@ class BluetoothServerService : Service() {
         return START_STICKY
     }
 
+    // ---- Bluetooth server ----
     private fun startServer() {
         scope.launch {
             try {
-                val adapter = BluetoothAdapter.getDefaultAdapter()
+                val adapter = BluetoothAdapter.getDefaultAdapter() ?: return@launch
                 serverSocket = adapter.listenUsingRfcommWithServiceRecord("BTExplorer", BT_UUID)
-                Log.d(TAG, "Server listening on UUID: $BT_UUID")
-
+                Log.d(TAG, "BT server listening on UUID: $BT_UUID")
                 while (isActive) {
                     val socket = serverSocket?.accept() ?: break
-                    Log.d(TAG, "Client connected: ${socket.remoteDevice.name}")
-                    updateNotification("מחובר ל: ${socket.remoteDevice.name}")
-                    launch { handleClient(socket) }
+                    val name = try { socket.remoteDevice.name ?: socket.remoteDevice.address } catch (e: Exception) { "מכשיר" }
+                    Log.d(TAG, "BT client connected: $name")
+                    updateNotification("מחובר (Bluetooth): $name")
+                    launch { handleStreams(socket.inputStream, socket.outputStream) { socket.close() } }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Server error: ${e.message}")
+                Log.e(TAG, "BT server error: ${e.message}")
             }
         }
     }
 
-    private suspend fun handleClient(socket: BluetoothSocket) {
-        val input = DataInputStream(BufferedInputStream(socket.inputStream))
-        val output = DataOutputStream(BufferedOutputStream(socket.outputStream))
+    // ---- WiFi TCP server ----
+    private fun startWifiTcpServer() {
+        scope.launch {
+            try {
+                tcpServerSocket = ServerSocket(WIFI_TCP_PORT)
+                Log.d(TAG, "TCP server listening on port $WIFI_TCP_PORT")
+                while (isActive) {
+                    val socket = try { tcpServerSocket?.accept() } catch (e: Exception) { break } ?: break
+                    val addr = socket.inetAddress.hostAddress ?: "unknown"
+                    Log.d(TAG, "WiFi client connected: $addr")
+                    updateNotification("מחובר (WiFi): $addr")
+                    launch { handleStreams(socket.getInputStream(), socket.getOutputStream()) { socket.close() } }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "TCP server error: ${e.message}")
+            }
+        }
+    }
 
+    // ---- Wi-Fi Direct host (direct connection, no router) ----
+    private fun startWifiDirectHost() {
         try {
-            while (socket.isConnected) {
-                // קריאת פקודה - פרוטוקול: [4 bytes length][json bytes]
+            val wd = WifiDirectManager(this)
+            wifiDirect = wd
+            wd.register()
+            wd.createGroup { ok, err ->
+                if (ok) updateNotification("שרת WiFi ישיר פעיל — התחבר מהמכשיר השני")
+                else Log.w(TAG, "Wi-Fi Direct host: $err")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Wi-Fi Direct host failed: ${e.message}")
+        }
+    }
+
+    // ---- Unified command loop (Bluetooth or TCP) ----
+    private fun handleStreams(rawIn: InputStream, rawOut: OutputStream, onDone: () -> Unit) {
+        val input = DataInputStream(BufferedInputStream(rawIn))
+        val output = DataOutputStream(BufferedOutputStream(rawOut))
+        try {
+            while (true) {
                 val len = input.readInt()
+                if (len <= 0 || len > 4 * 1024 * 1024) break
                 val jsonBytes = ByteArray(len)
                 input.readFully(jsonBytes)
-                val command = BtCommand.fromJson(String(jsonBytes))
-
-                Log.d(TAG, "Received command: ${command.cmd} path=${command.path}")
-
+                val command = try { BtCommand.fromJson(String(jsonBytes)) } catch (e: Exception) { continue }
+                Log.d(TAG, "cmd: ${command.cmd} path=${command.path}")
                 when (command.cmd) {
                     "LIST_DIR" -> handleListDir(command, output)
                     "GET_FILE" -> handleGetFile(command, output)
@@ -101,7 +155,7 @@ class BluetoothServerService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "Client error: ${e.message}")
         } finally {
-            socket.close()
+            try { onDone() } catch (_: Exception) {}
             updateNotification("ממתין לחיבור...")
         }
     }
@@ -122,11 +176,7 @@ class BluetoothServerService : Service() {
             sendJson(output, BtResponse(false, "File not found or empty").toJson())
             return
         }
-
-        // שולח תחילה JSON עם הגודל
         sendJson(output, BtResponse(success = true, fileSize = fileSize).toJson())
-
-        // ואז שולח את תוכן הקובץ
         val stream = RootManager.openFile(cmd.path, cmd.useRoot && useRoot)
         stream?.use { input ->
             val buffer = ByteArray(8192)
@@ -166,7 +216,11 @@ class BluetoothServerService : Service() {
 
     private fun stopServer() {
         scope.cancel()
-        serverSocket?.close()
+        try { wifiDirect?.disconnect() } catch (_: Exception) {}
+        try { wifiDirect?.unregister() } catch (_: Exception) {}
+        wifiDirect = null
+        try { serverSocket?.close() } catch (_: Exception) {}
+        try { tcpServerSocket?.close() } catch (_: Exception) {}
         isRunning = false
     }
 
@@ -193,8 +247,10 @@ class BluetoothServerService : Service() {
     }
 
     private fun updateNotification(text: String) {
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.notify(NOTIF_ID, buildNotification(text))
+        try {
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.notify(NOTIF_ID, buildNotification(text))
+        } catch (_: Exception) {}
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
