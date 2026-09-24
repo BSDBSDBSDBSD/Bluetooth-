@@ -3,141 +3,244 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#0F1923">
+    android:background="#0A0E1A">
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp"
-        android:background="#1A2535">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="📁 סייר קבצים BT"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="#FFFFFF"/>
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="גישה לקבצים במכשיר מרוחק"
-            android:textSize="13sp"
-            android:textColor="#AAAAAA"
-            android:layout_marginTop="2dp"/>
-    </LinearLayout>
-
+    <!-- Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:layout_margin="16dp"
-        android:padding="14dp"
-        android:background="@drawable/card_bg">
-        <View
-            android:id="@+id/statusDot"
-            android:layout_width="10dp"
-            android:layout_height="10dp"
-            android:background="@drawable/dot_red"
-            android:layout_marginEnd="10dp"/>
-        <TextView
-            android:id="@+id/tvStatus"
+        android:paddingStart="20dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="18dp"
+        android:background="#111827">
+
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="שרת כבוי"
-            android:textColor="#AAAAAA"
-            android:textSize="14sp"/>
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="BT Explorer"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="גישה לקבצים במכשיר מרוחק"
+                android:textSize="12sp"
+                android:textColor="#22C55E"
+                android:layout_marginTop="2dp"/>
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnSettings"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:src="@drawable/ic_settings"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:tint="#888888"
+            android:contentDescription="הגדרות"/>
     </LinearLayout>
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="12dp"
-        android:padding="14dp"
-        android:background="@drawable/card_bg">
-        <TextView
-            android:id="@+id/tvRootStatus"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="בודק הרשאות Root..."
-            android:textSize="13sp"
-            android:textColor="#CCCCCC"/>
-        <Switch
-            android:id="@+id/switchRoot"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Root"
-            android:textColor="#FFFFFF"
-            android:enabled="false"/>
-    </LinearLayout>
+        android:layout_height="match_parent">
 
-    <Button
-        android:id="@+id/btnStartServer"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="10dp"
-        android:text="הפעל שרת (מכשיר נגיש)"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:backgroundTint="#1DB954"
-        android:textColor="#FFFFFF"/>
-
-    <Button
-        android:id="@+id/btnConnect"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="10dp"
-        android:text="התחבר דרך Bluetooth"
-        android:textSize="15sp"
-        android:backgroundTint="#2563EB"
-        android:textColor="#FFFFFF"/>
-
-    <Button
-        android:id="@+id/btnConnectWifi"
-        android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        android:text="התחבר דרך WiFi Direct"
-        android:textSize="15sp"
-        android:backgroundTint="#7C3AED"
-        android:textColor="#FFFFFF"/>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:padding="14dp"
-        android:background="@drawable/card_bg">
-        <TextView
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="הוראות שימוש:"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold"
-            android:textSize="14sp"
-            android:layout_marginBottom="8dp"/>
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="1. מכשיר שגישים אליו: הפעל שרת\n2. מכשיר מדפדף: התחבר דרך BT או WiFi\n3. בחר מכשיר מהרשימה\n4. גלוש וצפה בקבצים"
-            android:textColor="#AAAAAA"
-            android:textSize="13sp"
-            android:lineSpacingExtra="4dp"/>
-    </LinearLayout>
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Status Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:background="@drawable/card_bg"
+                android:layout_marginBottom="12dp">
+
+                <View
+                    android:id="@+id/statusDot"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:background="@drawable/dot_red"
+                    android:layout_marginEnd="12dp"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:id="@+id/tvStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="שרת כבוי"
+                        android:textColor="#FFFFFF"
+                        android:textSize="15sp"/>
+                    <TextView
+                        android:id="@+id/tvStatusSub"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="הפעל כדי לאפשר גישה למכשיר זה"
+                        android:textColor="#666666"
+                        android:textSize="12sp"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Root Card -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:background="@drawable/card_bg"
+                android:layout_marginBottom="20dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="מצב Root"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"/>
+                    <TextView
+                        android:id="@+id/tvRootStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="בודק הרשאות..."
+                        android:textColor="#888888"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/switchRoot"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:enabled="false"
+                    android:thumbTint="#22C55E"
+                    android:trackTint="#1A3A1A"/>
+            </LinearLayout>
+
+            <!-- Section: Server -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="שרת"
+                android:textSize="11sp"
+                android:textColor="#22C55E"
+                android:textAllCaps="true"
+                android:letterSpacing="0.12"
+                android:layout_marginBottom="8dp"
+                android:layout_marginStart="4dp"/>
+
+            <Button
+                android:id="@+id/btnStartServer"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="הפעל שרת (מכשיר נגיש)"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:backgroundTint="#16A34A"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="20dp"/>
+
+            <!-- Section: Connect -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="התחברות"
+                android:textSize="11sp"
+                android:textColor="#22C55E"
+                android:textAllCaps="true"
+                android:letterSpacing="0.12"
+                android:layout_marginBottom="8dp"
+                android:layout_marginStart="4dp"/>
+
+            <Button
+                android:id="@+id/btnConnect"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="התחבר דרך Bluetooth"
+                android:textSize="15sp"
+                android:backgroundTint="#1D4ED8"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="10dp"/>
+
+            <Button
+                android:id="@+id/btnConnectWifi"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="התחבר דרך WiFi Direct"
+                android:textSize="15sp"
+                android:backgroundTint="#6D28D9"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="20dp"/>
+
+            <!-- Instructions Card -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="הוראות"
+                android:textSize="11sp"
+                android:textColor="#22C55E"
+                android:textAllCaps="true"
+                android:letterSpacing="0.12"
+                android:layout_marginBottom="8dp"
+                android:layout_marginStart="4dp"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:background="@drawable/card_bg">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="1.  מכשיר שגישים אליו: הפעל שרת"
+                    android:textColor="#CCCCCC"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="8dp"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="2.  מכשיר מדפדף: התחבר דרך BT או WiFi"
+                    android:textColor="#CCCCCC"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="8dp"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="3.  בחר מכשיר מהרשימה"
+                    android:textColor="#CCCCCC"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="8dp"/>
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="4.  גלוש, העתק והורד קבצים"
+                    android:textColor="#CCCCCC"
+                    android:textSize="13sp"/>
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
 
 </LinearLayout>

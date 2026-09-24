@@ -53,6 +53,7 @@
         <activity android:name=".ui.FileExplorerActivity" android:exported="false"/>
         <activity android:name=".ui.DeviceScanActivity" android:exported="false"/>
         <activity android:name=".ui.WifiScanActivity" android:exported="false"/>
+        <activity android:name=".ui.SettingsActivity" android:exported="false"/>
 
         <service
             android:name=".bluetooth.BluetoothServerService"

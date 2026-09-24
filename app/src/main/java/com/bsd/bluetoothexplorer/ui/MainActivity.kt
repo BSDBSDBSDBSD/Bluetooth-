@@ -22,8 +22,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStartServer: Button
     private lateinit var btnConnect: Button
     private lateinit var btnConnectWifi: Button
+    private lateinit var btnSettings: android.widget.ImageButton
     private lateinit var switchRoot: Switch
     private lateinit var tvStatus: TextView
+    private lateinit var tvStatusSub: TextView
     private lateinit var tvRootStatus: TextView
     private lateinit var statusDot: View
 
@@ -34,15 +36,20 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // Hide default action bar — we have our own header
+        supportActionBar?.hide()
+
         btnStartServer  = findViewById(R.id.btnStartServer)
         btnConnect      = findViewById(R.id.btnConnect)
         btnConnectWifi  = findViewById(R.id.btnConnectWifi)
+        btnSettings     = findViewById(R.id.btnSettings)
         switchRoot      = findViewById(R.id.switchRoot)
         tvStatus        = findViewById(R.id.tvStatus)
+        tvStatusSub     = findViewById(R.id.tvStatusSub)
         tvRootStatus    = findViewById(R.id.tvRootStatus)
         statusDot       = findViewById(R.id.statusDot)
 
-        // Root בthread נפרד — לא יגרום לקריסה
+        // Root check in background thread
         Thread {
             try { RootManager.init() } catch (e: Exception) { e.printStackTrace() }
             runOnUiThread { updateRootStatus() }
@@ -64,13 +71,14 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, WifiScanActivity::class.java))
         }
 
-        // הרשאות Bluetooth מייד
+        btnSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+
+        // Request permissions
         requestBluetoothPermissions()
-        // הרשאות Storage עם דיליי — ימנע קריסה
         Handler(Looper.getMainLooper()).postDelayed({
-            if (!isDestroyed && !isFinishing) {
-                requestStoragePermission()
-            }
+            if (!isDestroyed && !isFinishing) requestStoragePermission()
         }, 800)
     }
 
@@ -164,7 +172,6 @@ class MainActivity : AppCompatActivity() {
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        // אל תעשה כלום שיגרום לקריסה
     }
 
     private fun startServer() {
@@ -195,11 +202,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setServerUI(running: Boolean) {
-        btnStartServer.text = if (running) "עצור שרת" else "הפעל שרת"
+        btnStartServer.text = if (running) "עצור שרת" else "הפעל שרת (מכשיר נגיש)"
         btnStartServer.backgroundTintList = getColorStateList(
             if (running) android.R.color.holo_red_light else R.color.green_primary
         )
-        tvStatus.text = if (running) "שרת פעיל — ממתין לחיבורים" else "שרת כבוי"
+        tvStatus.text = if (running) "שרת פעיל" else "שרת כבוי"
+        tvStatusSub.text = if (running) "ממתין לחיבורים מרחוק" else "הפעל כדי לאפשר גישה למכשיר זה"
         statusDot.setBackgroundResource(if (running) R.drawable.dot_green else R.drawable.dot_red)
     }
 
