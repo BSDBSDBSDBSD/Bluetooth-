@@ -1,6 +1,7 @@
 package com.bsd.bluetoothexplorer.ui
 
-import android.net.wifi.p2p.WifiP2pDevice
+import android.content.Context
+import android.net.wifi.WifiManager
 import android.os.*
 import android.view.*
 import android.widget.*
@@ -10,9 +11,13 @@ import com.bsd.bluetoothexplorer.R
 import com.bsd.bluetoothexplorer.bluetooth.BluetoothClient
 import com.bsd.bluetoothexplorer.wifi.WifiDirectManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.net.InetSocketAddress
 import java.net.Socket
+import java.nio.ByteOrder
 
 class WifiScanActivity : AppCompatActivity() {
 
@@ -21,16 +26,18 @@ class WifiScanActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
     private lateinit var tvHint: TextView
     private lateinit var tvMyIp: TextView
+    private lateinit var etIpAddress: EditText
+    private lateinit var btnConnectIp: Button
 
-    private val wifiManager by lazy { WifiDirectManager(this) }
-    private val peers = mutableListOf<WifiP2pDevice>()
-    private lateinit var peerAdapter: WifiPeerAdapter
+    private val foundServers = mutableListOf<String>()
+    private lateinit var serverAdapter: ArrayAdapter<String>
+    private var isScanning = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_wifi_scan)
 
-        supportActionBar?.title = "חיפוש WiFi Direct"
+        supportActionBar?.title = "חיפוש WiFi"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         listView    = findViewById(R.id.listDevices)
@@ -38,137 +45,151 @@ class WifiScanActivity : AppCompatActivity() {
         progressBar = findViewById(R.id.progressBar)
         tvHint      = findViewById(R.id.tvHint)
         tvMyIp      = findViewById(R.id.tvMyIp)
+        etIpAddress = findViewById(R.id.etIpAddress)
+        btnConnectIp = findViewById(R.id.btnConnectIp)
 
-        peerAdapter = WifiPeerAdapter(this, peers)
-        listView.adapter = peerAdapter
+        serverAdapter = object : ArrayAdapter<String>(this, 0, foundServers) {
+            override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
+                val v = convertView ?: LayoutInflater.from(context)
+                    .inflate(R.layout.item_device, parent, false)
+                val ip = getItem(pos) ?: ""
+                v.findViewById<TextView>(R.id.tvDeviceName).apply {
+                    text = "שרת WiFi"
+                    setTextColor(0xFFFFFFFF.toInt())
+                }
+                v.findViewById<TextView>(R.id.tvDeviceAddr).apply {
+                    text = "$ip:${WifiDirectManager.SERVER_PORT}"
+                    setTextColor(0xFF4CAF50.toInt())
+                }
+                v.background = context.getDrawable(R.drawable.item_device_bg)
+                return v
+            }
+        }
+        listView.adapter = serverAdapter
         listView.divider = null
 
-        wifiManager.register()
-        wifiManager.onPeersChanged = { newPeers ->
-            runOnUiThread {
-                progressBar.visibility = View.GONE
-                peers.clear()
-                peers.addAll(newPeers)
-                peerAdapter.notifyDataSetChanged()
-                tvHint.text = if (newPeers.isEmpty())
-                    "לא נמצאו מכשירים — ודא שהצד השני גם בחיפוש"
-                else
-                    "${newPeers.size} מכשירים — בחר מכשיר:"
+        val myIp = getLocalIp()
+        tvMyIp.text = "IP שלי: $myIp"
+
+        btnScan.setOnClickListener { startLanScan() }
+        btnConnectIp.setOnClickListener {
+            val ip = etIpAddress.text.toString().trim()
+            if (ip.isNotEmpty()) {
+                connectToServer(ip)
+            } else {
+                Toast.makeText(this, "הכנס כתובת IP", Toast.LENGTH_SHORT).show()
             }
         }
-
-        wifiManager.onConnectionChanged = { connected, info ->
-            runOnUiThread {
-                if (connected && info != null) {
-                    val serverIp = if (info.isGroupOwner) {
-                        "192.168.49.1"
-                    } else {
-                        info.groupOwnerAddress?.hostAddress ?: "192.168.49.1"
-                    }
-                    tvHint.text = "✅ מחובר! IP שרת: $serverIp"
-                    connectToWifiServer(serverIp)
-                }
-            }
-        }
-
-        tvMyIp.text = "IP שלי: בדיקה..."
-        Handler(Looper.getMainLooper()).postDelayed({
-            tvMyIp.text = "IP שלי: ${wifiManager.getLocalIp()}"
-        }, 500)
-
-        btnScan.setOnClickListener { startDiscovery() }
-        startDiscovery()
 
         listView.setOnItemClickListener { _, _, pos, _ ->
-            if (pos < peers.size) connectToPeer(peers[pos])
+            if (pos < foundServers.size) connectToServer(foundServers[pos])
         }
+
+        startLanScan()
     }
 
-    private fun startDiscovery() {
+    private fun getLocalIp(): String {
+        return try {
+            val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val ip = wm.connectionInfo.ipAddress
+            if (ip == 0) return "לא מחובר"
+            val ipBytes = if (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN)
+                byteArrayOf(
+                    (ip and 0xFF).toByte(),
+                    (ip shr 8 and 0xFF).toByte(),
+                    (ip shr 16 and 0xFF).toByte(),
+                    (ip shr 24 and 0xFF).toByte()
+                )
+            else
+                byteArrayOf(
+                    (ip shr 24 and 0xFF).toByte(),
+                    (ip shr 16 and 0xFF).toByte(),
+                    (ip shr 8 and 0xFF).toByte(),
+                    (ip and 0xFF).toByte()
+                )
+            "${ipBytes[0].toInt() and 0xFF}.${ipBytes[1].toInt() and 0xFF}.${ipBytes[2].toInt() and 0xFF}.${ipBytes[3].toInt() and 0xFF}"
+        } catch (e: Exception) { "?" }
+    }
+
+    private fun getSubnetPrefix(): String {
+        val ip = getLocalIp()
+        if (ip == "?" || ip == "לא מחובר") return "192.168.1"
+        val parts = ip.split(".")
+        return if (parts.size == 4) "${parts[0]}.${parts[1]}.${parts[2]}" else "192.168.1"
+    }
+
+    private fun startLanScan() {
+        if (isScanning) return
+        isScanning = true
+        foundServers.clear()
+        serverAdapter.notifyDataSetChanged()
         progressBar.visibility = View.VISIBLE
-        tvHint.text = "מחפש מכשירים..."
-        wifiManager.discoverPeers { success, error ->
-            runOnUiThread {
-                if (!success) {
-                    progressBar.visibility = View.GONE
-                    tvHint.text = "שגיאה בחיפוש: $error\nוודא ש-WiFi מופעל"
+        btnScan.isEnabled = false
+        tvHint.text = "סורק רשת מקומית..."
+
+        val subnet = getSubnetPrefix()
+        val port = WifiDirectManager.SERVER_PORT
+
+        lifecycleScope.launch {
+            val jobs = (1..254).map { i ->
+                async(Dispatchers.IO) {
+                    val ip = "$subnet.$i"
+                    try {
+                        val socket = Socket()
+                        socket.connect(InetSocketAddress(ip, port), 150)
+                        socket.close()
+                        ip
+                    } catch (e: Exception) { null }
+                }
+            }
+            val results = jobs.awaitAll().filterNotNull()
+            withContext(Dispatchers.Main) {
+                isScanning = false
+                progressBar.visibility = View.GONE
+                btnScan.isEnabled = true
+                foundServers.clear()
+                foundServers.addAll(results)
+                serverAdapter.notifyDataSetChanged()
+                tvHint.text = when {
+                    results.isEmpty() -> "לא נמצאו שרתים — הפעל שרת במכשיר השני ונסה שוב"
+                    else -> "${results.size} שרת/ים נמצאו — בחר:"
                 }
             }
         }
     }
 
-    private fun connectToPeer(device: WifiP2pDevice) {
+    private fun connectToServer(serverIp: String) {
         progressBar.visibility = View.VISIBLE
-        tvHint.text = "מתחבר אל ${device.deviceName}..."
-        wifiManager.connect(device) { success ->
-            runOnUiThread {
-                if (!success) {
-                    progressBar.visibility = View.GONE
-                    tvHint.text = "חיבור נכשל — נסה שוב"
-                }
-                // אם הצליח - onConnectionChanged יתפוס
-            }
-        }
-    }
+        tvHint.text = "מתחבר ל-$serverIp..."
+        btnConnectIp.isEnabled = false
 
-    private fun connectToWifiServer(serverIp: String) {
-        progressBar.visibility = View.VISIBLE
-        tvHint.text = "מתחבר לשרת $serverIp..."
         lifecycleScope.launch {
             val success = withContext(Dispatchers.IO) {
                 try {
                     val socket = Socket()
-                    socket.connect(java.net.InetSocketAddress(serverIp, WifiDirectManager.SERVER_PORT), 5000)
+                    socket.connect(InetSocketAddress(serverIp, WifiDirectManager.SERVER_PORT), 5000)
                     val client = BluetoothClient()
                     client.connectWithSocket(socket)
                     ClientHolder.client = client
-                    ClientHolder.remoteDeviceName = "WiFi Direct ($serverIp)"
+                    ClientHolder.remoteDeviceName = "WiFi ($serverIp)"
                     true
                 } catch (e: Exception) {
                     false
                 }
             }
             progressBar.visibility = View.GONE
+            btnConnectIp.isEnabled = true
             if (success) {
                 startActivity(android.content.Intent(this@WifiScanActivity, FileExplorerActivity::class.java))
                 finish()
             } else {
-                tvHint.text = "❌ לא ניתן להתחבר לשרת\nוודא שהאפליקציה פועלת במצב שרת במכשיר השני"
+                tvHint.text = "❌ לא ניתן להתחבר\nוודא שהשרת פועל ושניכם על אותה WiFi"
             }
         }
-    }
-
-    override fun onDestroy() {
-        wifiManager.unregister()
-        super.onDestroy()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) finish()
         return super.onOptionsItemSelected(item)
-    }
-}
-
-class WifiPeerAdapter(
-    private val ctx: android.content.Context,
-    private val peers: List<WifiP2pDevice>
-) : BaseAdapter() {
-    override fun getCount() = peers.size
-    override fun getItem(pos: Int) = peers[pos]
-    override fun getItemId(pos: Int) = pos.toLong()
-    override fun getView(pos: Int, convertView: View?, parent: ViewGroup): View {
-        val view = convertView ?: LayoutInflater.from(ctx)
-            .inflate(R.layout.item_device, parent, false)
-        val device = peers[pos]
-        view.findViewById<TextView>(R.id.tvDeviceName).apply {
-            text = device.deviceName.ifBlank { "WiFi Device" }
-            setTextColor(0xFFFFFFFF.toInt())
-        }
-        view.findViewById<TextView>(R.id.tvDeviceAddr).apply {
-            text = "WiFi Direct • ${device.deviceAddress}"
-            setTextColor(0xFF4CAF50.toInt())
-        }
-        view.background = ctx.getDrawable(R.drawable.item_device_bg)
-        return view
     }
 }
