@@ -178,15 +178,23 @@ class WifiScanActivity : AppCompatActivity() {
         btnConnectIp.isEnabled = false
         lifecycleScope.launch {
             val success = withContext(Dispatchers.IO) {
-                try {
-                    val socket = Socket()
-                    socket.connect(InetSocketAddress(serverIp, WifiDirectManager.SERVER_PORT), 8000)
-                    val client = BluetoothClient()
-                    client.connectWithSocket(socket)
-                    ClientHolder.client = client
-                    ClientHolder.remoteDeviceName = "WiFi ($serverIp)"
-                    true
-                } catch (e: Exception) { false }
+                var ok = false
+                // A few attempts: the host's TCP server can take a moment to be reachable.
+                repeat(3) { attempt ->
+                    if (ok) return@repeat
+                    try {
+                        val socket = Socket()
+                        socket.connect(InetSocketAddress(serverIp, WifiDirectManager.SERVER_PORT), 6000)
+                        val client = BluetoothClient()
+                        client.connectWithSocket(socket)
+                        ClientHolder.client = client
+                        ClientHolder.remoteDeviceName = "WiFi ($serverIp)"
+                        ok = true
+                    } catch (e: Exception) {
+                        try { Thread.sleep(1000) } catch (_: InterruptedException) {}
+                    }
+                }
+                ok
             }
             if (!isDestroyed) {
                 progressBar.visibility = View.GONE
