@@ -34,10 +34,13 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        com.bsd.bluetoothexplorer.util.CrashLog.install(this)
         setContentView(R.layout.activity_main)
 
         // Hide default action bar — we have our own header
         supportActionBar?.hide()
+
+        com.bsd.bluetoothexplorer.util.CrashLog.read(this)?.let { showLastCrash(it) }
 
         btnStartServer  = findViewById(R.id.btnStartServer)
         btnConnect      = findViewById(R.id.btnConnect)
@@ -80,6 +83,22 @@ class MainActivity : AppCompatActivity() {
         Handler(Looper.getMainLooper()).postDelayed({
             if (!isDestroyed && !isFinishing) requestStoragePermission()
         }, 800)
+    }
+
+    private fun showLastCrash(text: String) {
+        com.bsd.bluetoothexplorer.util.CrashLog.clear(this)
+        try {
+            AlertDialog.Builder(this)
+                .setTitle("האפליקציה נסגרה בגלל שגיאה")
+                .setMessage(text.take(4000))
+                .setPositiveButton("העתק") { _, _ ->
+                    val cm = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("crash", text))
+                    Toast.makeText(this, "הועתק", Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("סגור", null)
+                .show()
+        } catch (_: Exception) {}
     }
 
     private fun updateRootStatus() {

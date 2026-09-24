@@ -93,22 +93,48 @@ class WifiDirectManager(private val context: Context) {
         }
     }
 
-    fun connect(device: WifiP2pDevice, onResult: (Boolean) -> Unit) {
+    /**
+     * @param groupOwnerIntent 0 = "I want to be the client" (the other device hosts at
+     * 192.168.49.1), 15 = "I want to host". The connecting phone passes 0 so the server
+     * phone hosts and its TCP server is reachable at the fixed host IP.
+     */
+    fun connect(device: WifiP2pDevice, groupOwnerIntent: Int = 0, onResult: (Boolean, String) -> Unit) {
         val config = WifiP2pConfig().apply {
             deviceAddress = device.deviceAddress
             wps.setup = android.net.wifi.WpsInfo.PBC
+            this.groupOwnerIntent = groupOwnerIntent.coerceIn(0, 15)
         }
         try {
             manager.connect(channel, config, object : WifiP2pManager.ActionListener {
-                override fun onSuccess() = onResult(true)
+                override fun onSuccess() = onResult(true, "")
                 override fun onFailure(reason: Int) {
                     Log.e(TAG, "Connect failed: ${reasonText(reason)}")
-                    onResult(false)
+                    onResult(false, reasonText(reason))
                 }
             })
         } catch (e: SecurityException) {
-            onResult(false)
+            onResult(false, "חסרה הרשאה")
+        } catch (e: Exception) {
+            onResult(false, e.message ?: "שגיאה")
         }
+    }
+
+    /** Become an autonomous group owner (host) so other phones can find and join this one. */
+    fun createGroup(onResult: (Boolean, String) -> Unit) {
+        try {
+            manager.createGroup(channel, object : WifiP2pManager.ActionListener {
+                override fun onSuccess() = onResult(true, "")
+                override fun onFailure(reason: Int) {
+                    if (reason == WifiP2pManager.BUSY) onResult(true, "") else onResult(false, reasonText(reason))
+                }
+            })
+        } catch (e: Exception) {
+            onResult(false, e.message ?: "שגיאה")
+        }
+    }
+
+    fun requestConnectionInfo(onInfo: (WifiP2pInfo?) -> Unit) {
+        try { manager.requestConnectionInfo(channel) { onInfo(it) } } catch (e: Exception) { onInfo(null) }
     }
 
     fun disconnect() {
