@@ -36,7 +36,7 @@
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
-        android:label="BT Explorer"
+        android:label="@string/app_name"
         android:theme="@style/Theme.BTExplorer"
         android:requestLegacyExternalStorage="true"
         android:preserveLegacyExternalStorage="true">

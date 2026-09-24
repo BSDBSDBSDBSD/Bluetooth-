@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">BT Explorer</string>
+    <string name="app_name">סייר קבצים</string>
     <string name="btn_start_server">הפעל שרת</string>
     <string name="btn_connect_bt">התחבר דרך Bluetooth</string>
     <string name="btn_connect_wifi">התחבר דרך WiFi Direct</string>

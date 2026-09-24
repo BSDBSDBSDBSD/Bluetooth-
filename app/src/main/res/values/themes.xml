@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.BTExplorer" parent="Theme.MaterialComponents.DayNight.NoActionBar">
-        <item name="colorPrimary">#2563EB</item>
-        <item name="colorPrimaryDark">#1A2535</item>
-        <item name="colorAccent">#1DB954</item>
-        <item name="android:windowBackground">#0F1923</item>
-        <item name="android:statusBarColor">#1A2535</item>
-        <item name="android:navigationBarColor">#0F1923</item>
+        <item name="colorPrimary">#0D9488</item>
+        <item name="colorPrimaryDark">#0B1120</item>
+        <item name="colorAccent">#0EA5E9</item>
+        <item name="android:windowBackground">#0B1120</item>
+        <item name="android:statusBarColor">#059669</item>
+        <item name="android:navigationBarColor">#0B1120</item>
     </style>
 </resources>
