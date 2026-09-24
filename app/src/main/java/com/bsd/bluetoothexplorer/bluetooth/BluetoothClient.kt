@@ -6,6 +6,8 @@ import com.bsd.bluetoothexplorer.model.BtCommand
 import com.bsd.bluetoothexplorer.model.BtResponse
 import com.bsd.bluetoothexplorer.model.FileItem
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.*
 import java.net.Socket
 
@@ -19,27 +21,32 @@ class BluetoothClient {
     private var tcpSocket: Socket? = null
     private var input: DataInputStream? = null
     private var output: DataOutputStream? = null
+    // Serialises every request<->response so overlapping commands can't desync the socket.
+    private val io = Mutex()
     var isConnected = false
         private set
 
-    // חיבור Bluetooth רגיל
+    // חיבור Bluetooth רגיל — עם כמה ניסיונות (RFCOMM לפעמים נכשל בניסיון הראשון)
     suspend fun connect(device: BluetoothDevice): Boolean = withContext(Dispatchers.IO) {
-        try {
-            disconnect()
-            val s = device.createRfcommSocketToServiceRecord(BluetoothServerService.BT_UUID)
-            BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery()
-            s.connect()
-            btSocket = s
-            input  = DataInputStream(BufferedInputStream(s.inputStream))
-            output = DataOutputStream(BufferedOutputStream(s.outputStream))
-            isConnected = true
-            Log.d(TAG, "BT Connected to ${device.address}")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "BT Connect failed: ${e.message}")
-            isConnected = false
-            false
+        disconnect()
+        BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery()
+        repeat(3) { attempt ->
+            try {
+                val s = device.createRfcommSocketToServiceRecord(BluetoothServerService.BT_UUID)
+                s.connect()
+                btSocket = s
+                input  = DataInputStream(BufferedInputStream(s.inputStream))
+                output = DataOutputStream(BufferedOutputStream(s.outputStream))
+                isConnected = true
+                Log.d(TAG, "BT Connected to ${device.address}")
+                return@withContext true
+            } catch (e: Exception) {
+                Log.e(TAG, "BT connect attempt ${attempt + 1} failed: ${e.message}")
+                try { Thread.sleep(700) } catch (_: InterruptedException) {}
+            }
         }
+        isConnected = false
+        false
     }
 
     // חיבור דרך TCP (WiFi Direct / WiFi רגיל)
@@ -70,14 +77,13 @@ class BluetoothClient {
     }
 
     // -------- LIST DIR --------
+    /** Throws on a connection/protocol error so the UI can tell "failed" from "really empty". */
     suspend fun listDir(path: String, useRoot: Boolean = false): List<FileItem> = withContext(Dispatchers.IO) {
-        try {
+        io.withLock {
             val cmd = BtCommand("LIST_DIR", path = path, useRoot = useRoot)
-            val response = sendCommand(cmd) ?: return@withContext emptyList()
+            sendRaw(cmd.toJson())
+            val response = receiveJson() ?: throw IOException("אין תגובה מהשרת")
             response.files
-        } catch (e: Exception) {
-            Log.e(TAG, "listDir error: ${e.message}")
-            emptyList()
         }
     }
 
@@ -88,63 +94,65 @@ class BluetoothClient {
         useRoot: Boolean = false,
         onProgress: (Long, Long) -> Unit = { _, _ -> }
     ): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val cmd = BtCommand("GET_FILE", path = remotePath, useRoot = useRoot)
-            sendRaw(cmd.toJson())
+        io.withLock {
+            try {
+                val cmd = BtCommand("GET_FILE", path = remotePath, useRoot = useRoot)
+                sendRaw(cmd.toJson())
 
-            val response = receiveJson() ?: return@withContext false
-            if (!response.success) return@withContext false
+                val response = receiveJson() ?: return@withLock false
+                if (!response.success) return@withLock false
 
-            val totalSize = response.fileSize
-            localFile.parentFile?.mkdirs()
-            FileOutputStream(localFile).use { fos ->
-                val buffer = ByteArray(8192)
-                var received = 0L
-                val inp = input ?: return@withContext false
-                while (received < totalSize) {
-                    val toRead = minOf(buffer.size.toLong(), totalSize - received).toInt()
-                    val bytesRead = inp.read(buffer, 0, toRead)
-                    if (bytesRead == -1) break
-                    fos.write(buffer, 0, bytesRead)
-                    received += bytesRead
-                    onProgress(received, totalSize)
+                val totalSize = response.fileSize
+                localFile.parentFile?.mkdirs()
+                FileOutputStream(localFile).use { fos ->
+                    val buffer = ByteArray(8192)
+                    var received = 0L
+                    val inp = input ?: return@withLock false
+                    while (received < totalSize) {
+                        val toRead = minOf(buffer.size.toLong(), totalSize - received).toInt()
+                        val bytesRead = inp.read(buffer, 0, toRead)
+                        if (bytesRead == -1) break
+                        fos.write(buffer, 0, bytesRead)
+                        received += bytesRead
+                        onProgress(received, totalSize)
+                    }
                 }
+                true
+            } catch (e: Exception) {
+                Log.e(TAG, "getFile error: ${e.message}")
+                false
             }
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "getFile error: ${e.message}")
-            false
         }
     }
 
     // -------- DELETE --------
     suspend fun delete(path: String, useRoot: Boolean = false): Boolean = withContext(Dispatchers.IO) {
-        try { sendCommand(BtCommand("DELETE", path = path, useRoot = useRoot))?.success ?: false }
+        try { command(BtCommand("DELETE", path = path, useRoot = useRoot))?.success ?: false }
         catch (e: Exception) { false }
     }
 
     // -------- RENAME --------
     suspend fun rename(oldPath: String, newPath: String, useRoot: Boolean = false): Boolean = withContext(Dispatchers.IO) {
-        try { sendCommand(BtCommand("RENAME", path = oldPath, newPath = newPath, useRoot = useRoot))?.success ?: false }
+        try { command(BtCommand("RENAME", path = oldPath, newPath = newPath, useRoot = useRoot))?.success ?: false }
         catch (e: Exception) { false }
     }
 
     // -------- MKDIR --------
     suspend fun mkdir(path: String, useRoot: Boolean = false): Boolean = withContext(Dispatchers.IO) {
-        try { sendCommand(BtCommand("MKDIR", path = path, useRoot = useRoot))?.success ?: false }
+        try { command(BtCommand("MKDIR", path = path, useRoot = useRoot))?.success ?: false }
         catch (e: Exception) { false }
     }
 
     // -------- ROOT STATUS --------
     suspend fun getRootStatus(): Boolean = withContext(Dispatchers.IO) {
-        try { sendCommand(BtCommand("ROOT_STATUS"))?.isRoot ?: false }
+        try { command(BtCommand("ROOT_STATUS"))?.isRoot ?: false }
         catch (e: Exception) { false }
     }
 
     // -------- INTERNAL --------
-    private fun sendCommand(cmd: BtCommand): BtResponse? {
+    private suspend fun command(cmd: BtCommand): BtResponse? = io.withLock {
         sendRaw(cmd.toJson())
-        return receiveJson()
+        receiveJson()
     }
 
     private fun sendRaw(json: String) {

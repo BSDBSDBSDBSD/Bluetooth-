@@ -56,6 +56,9 @@ class FileExplorerActivity : AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.adapter = fileAdapter
 
+        // Tap the empty/error message to reload the current folder.
+        tvEmpty.setOnClickListener { loadDir(currentPath) }
+
         // בדיקת root בשרת
         lifecycleScope.launch {
             try {
@@ -84,9 +87,11 @@ class FileExplorerActivity : AppCompatActivity() {
         tvEmpty.visibility = View.GONE
 
         lifecycleScope.launch {
+            var failed = false
             val files = try {
                 withTimeout(15_000) { client?.listDir(path, useRoot) ?: emptyList() }
             } catch (e: Exception) {
+                failed = true
                 emptyList<FileItem>()
             }
 
@@ -94,11 +99,17 @@ class FileExplorerActivity : AppCompatActivity() {
                 runOnUiThread {
                     isLoading = false
                     showLoading(false)
-                    fileAdapter.setFiles(files)
                     currentPath = path
-                    if (files.isEmpty()) {
+                    if (failed) {
+                        // Don't claim the folder is empty when loading actually failed — offer retry.
                         tvEmpty.visibility = View.VISIBLE
-                        tvEmpty.text = if (path == "/") "הפעל Root לגישה לתיקיית שורש" else "תיקייה ריקה"
+                        tvEmpty.text = "⚠️ טעינה נכשלה — הקש כאן לניסיון חוזר"
+                    } else {
+                        fileAdapter.setFiles(files)
+                        if (files.isEmpty()) {
+                            tvEmpty.visibility = View.VISIBLE
+                            tvEmpty.text = if (path == "/") "הפעל Root לגישה לתיקיית שורש" else "תיקייה ריקה"
+                        }
                     }
                 }
             } else {
@@ -112,8 +123,84 @@ class FileExplorerActivity : AppCompatActivity() {
             pathStack.addLast(currentPath)
             loadDir(item.path)
         } else {
-            showDownloadDialog(item)
+            showFileActions(item)
         }
+    }
+
+    private fun showFileActions(item: FileItem) {
+        val isApk = item.name.endsWith(".apk", true)
+        val openLabel = when {
+            isApk -> "📲 התקן"
+            isImage(item.name) -> "🖼️ הצג תמונה"
+            isAudio(item.name) -> "🎵 נגן"
+            isVideo(item.name) -> "🎬 נגן וידאו"
+            else -> "📂 פתח"
+        }
+        val options = arrayOf(openLabel, "⬇️ הורד ל-Downloads", "שנה שם", "מחק")
+        AlertDialog.Builder(this)
+            .setTitle("📄 ${item.name}  ·  ${formatSize(item.size)}")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> openFile(item, install = isApk)
+                    1 -> downloadFile(item)
+                    2 -> showRenameDialog(item)
+                    3 -> confirmDelete(item)
+                }
+            }
+            .setNegativeButton("סגור", null)
+            .show()
+    }
+
+    /** Downloads to app cache, then opens the file with the right app (viewer/player/installer). */
+    private fun openFile(item: FileItem, install: Boolean) {
+        val safeName = item.name.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "file" }
+        val cacheFile = File(cacheDir, safeName)
+        showLoading(true); isLoading = true
+        tvPath.text = "פותח... 0%"
+        lifecycleScope.launch {
+            val ok = try {
+                withTimeout(120_000) {
+                    client?.getFile(item.path, cacheFile, useRoot) { received, total ->
+                        if (!isDestroyed) runOnUiThread {
+                            val pct = if (total > 0) (received * 100 / total).toInt() else 0
+                            tvPath.text = "פותח... $pct%"
+                        }
+                    } ?: false
+                }
+            } catch (e: Exception) { false }
+
+            if (!isDestroyed && !isFinishing) runOnUiThread {
+                isLoading = false; showLoading(false); tvPath.text = currentPath
+                if (ok) launchViewer(cacheFile, item.name, install)
+                else Toast.makeText(this@FileExplorerActivity, "❌ לא ניתן לפתוח את הקובץ", Toast.LENGTH_SHORT).show()
+            } else isLoading = false
+        }
+    }
+
+    private fun launchViewer(file: File, originalName: String, install: Boolean) {
+        try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                this, "$packageName.fileprovider", file
+            )
+            val mime = if (install) "application/vnd.android.package-archive"
+                       else mimeOf(originalName)
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mime)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "אין אפליקציה שיודעת לפתוח קובץ זה", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun isImage(n: String) = Regex("\\.(jpg|jpeg|png|gif|webp|bmp|heic)$", RegexOption.IGNORE_CASE).containsMatchIn(n)
+    private fun isAudio(n: String) = Regex("\\.(mp3|wav|m4a|aac|ogg|flac|opus)$", RegexOption.IGNORE_CASE).containsMatchIn(n)
+    private fun isVideo(n: String) = Regex("\\.(mp4|mkv|3gp|webm|avi|mov)$", RegexOption.IGNORE_CASE).containsMatchIn(n)
+
+    private fun mimeOf(name: String): String {
+        val ext = name.substringAfterLast('.', "").lowercase()
+        return android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "*/*"
     }
 
     private fun showDownloadDialog(item: FileItem) {
