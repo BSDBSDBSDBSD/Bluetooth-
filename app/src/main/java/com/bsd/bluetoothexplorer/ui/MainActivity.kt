@@ -78,6 +78,9 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
 
+        findViewById<Button>(R.id.btnEnableBt).setOnClickListener { enableBluetoothDiscoverable() }
+        findViewById<Button>(R.id.btnEnableWifi).setOnClickListener { openWifiEnable() }
+
         // Request permissions
         requestBluetoothPermissions()
         Handler(Looper.getMainLooper()).postDelayed({
@@ -99,6 +102,35 @@ class MainActivity : AppCompatActivity() {
                 .setNegativeButton("סגור", null)
                 .show()
         } catch (_: Exception) {}
+    }
+
+    /** Turns Bluetooth on (if off) and asks to make the device discoverable for 5 minutes. */
+    private fun enableBluetoothDiscoverable() {
+        try {
+            if (BluetoothAdapter.getDefaultAdapter() == null) {
+                Toast.makeText(this, "אין Bluetooth במכשיר", Toast.LENGTH_SHORT).show(); return
+            }
+            startActivity(
+                Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE)
+                    .putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300)
+            )
+        } catch (e: Exception) {
+            Toast.makeText(this, "צריך לאשר הרשאות Bluetooth", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** Opens the WiFi enable panel (Android does not allow toggling WiFi silently). */
+    private fun openWifiEnable() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startActivity(Intent(Settings.Panel.ACTION_WIFI))
+            } else {
+                @Suppress("DEPRECATION")
+                startActivity(Intent(Settings.ACTION_WIFI_SETTINGS))
+            }
+        } catch (e: Exception) {
+            try { startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS)) } catch (_: Exception) {}
+        }
     }
 
     private fun updateRootStatus() {

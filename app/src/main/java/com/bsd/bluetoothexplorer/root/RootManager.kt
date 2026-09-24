@@ -10,13 +10,27 @@ object RootManager {
     var isRootAvailable: Boolean = false
         private set
 
+    @Volatile private var initialized = false
+
+    /**
+     * Safe to call from several places (MainActivity + the service). The libsu default
+     * builder may only be set once — a second call throws "The main shell was already
+     * created", which used to crash the server on start. Guard it and swallow that error.
+     */
+    @Synchronized
     fun init() {
-        Shell.enableVerboseLogging = false
-        Shell.setDefaultBuilder(
-            Shell.Builder.create()
-                .setFlags(Shell.FLAG_REDIRECT_STDERR)
-                .setTimeout(10)
-        )
+        if (initialized) return
+        initialized = true
+        try {
+            Shell.enableVerboseLogging = false
+            Shell.setDefaultBuilder(
+                Shell.Builder.create()
+                    .setFlags(Shell.FLAG_REDIRECT_STDERR)
+                    .setTimeout(10)
+            )
+        } catch (e: Exception) {
+            // Builder already set (shell created earlier) — fine, keep going.
+        }
         isRootAvailable = try {
             Shell.getShell().isRoot
         } catch (e: Exception) {
