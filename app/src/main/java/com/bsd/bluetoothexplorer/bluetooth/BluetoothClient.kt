@@ -7,6 +7,7 @@ import com.bsd.bluetoothexplorer.model.BtResponse
 import com.bsd.bluetoothexplorer.model.FileItem
 import kotlinx.coroutines.*
 import java.io.*
+import java.net.Socket
 
 class BluetoothClient {
 
@@ -14,45 +15,70 @@ class BluetoothClient {
         const val TAG = "BTClient"
     }
 
-    private var socket: BluetoothSocket? = null
+    private var btSocket: BluetoothSocket? = null
+    private var tcpSocket: Socket? = null
     private var input: DataInputStream? = null
     private var output: DataOutputStream? = null
     var isConnected = false
         private set
 
+    // חיבור Bluetooth רגיל
     suspend fun connect(device: BluetoothDevice): Boolean = withContext(Dispatchers.IO) {
         try {
             disconnect()
             val s = device.createRfcommSocketToServiceRecord(BluetoothServerService.BT_UUID)
-            BluetoothAdapter.getDefaultAdapter().cancelDiscovery()
+            BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery()
             s.connect()
-            socket = s
-            input = DataInputStream(BufferedInputStream(s.inputStream))
+            btSocket = s
+            input  = DataInputStream(BufferedInputStream(s.inputStream))
             output = DataOutputStream(BufferedOutputStream(s.outputStream))
             isConnected = true
-            Log.d(TAG, "Connected to ${device.name}")
+            Log.d(TAG, "BT Connected to ${device.address}")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "Connect failed: ${e.message}")
+            Log.e(TAG, "BT Connect failed: ${e.message}")
+            isConnected = false
+            false
+        }
+    }
+
+    // חיבור דרך TCP (WiFi Direct / WiFi רגיל)
+    fun connectWithSocket(socket: Socket): Boolean {
+        return try {
+            disconnect()
+            tcpSocket = socket
+            input  = DataInputStream(BufferedInputStream(socket.getInputStream()))
+            output = DataOutputStream(BufferedOutputStream(socket.getOutputStream()))
+            isConnected = true
+            Log.d(TAG, "TCP Connected to ${socket.inetAddress}")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "TCP Connect failed: ${e.message}")
             isConnected = false
             false
         }
     }
 
     fun disconnect() {
-        try {
-            input?.close()
-            output?.close()
-            socket?.close()
-        } catch (_: Exception) {}
         isConnected = false
+        try { input?.close() } catch (_: Exception) {}
+        try { output?.close() } catch (_: Exception) {}
+        try { btSocket?.close() } catch (_: Exception) {}
+        try { tcpSocket?.close() } catch (_: Exception) {}
+        btSocket = null
+        tcpSocket = null
     }
 
     // -------- LIST DIR --------
     suspend fun listDir(path: String, useRoot: Boolean = false): List<FileItem> = withContext(Dispatchers.IO) {
-        val cmd = BtCommand("LIST_DIR", path = path, useRoot = useRoot)
-        val response = sendCommand(cmd) ?: return@withContext emptyList()
-        response.files
+        try {
+            val cmd = BtCommand("LIST_DIR", path = path, useRoot = useRoot)
+            val response = sendCommand(cmd) ?: return@withContext emptyList()
+            response.files
+        } catch (e: Exception) {
+            Log.e(TAG, "listDir error: ${e.message}")
+            emptyList()
+        }
     }
 
     // -------- GET FILE --------
@@ -66,13 +92,10 @@ class BluetoothClient {
             val cmd = BtCommand("GET_FILE", path = remotePath, useRoot = useRoot)
             sendRaw(cmd.toJson())
 
-            // קבלת JSON עם גודל הקובץ
             val response = receiveJson() ?: return@withContext false
             if (!response.success) return@withContext false
 
             val totalSize = response.fileSize
-
-            // קבלת bytes של הקובץ
             localFile.parentFile?.mkdirs()
             FileOutputStream(localFile).use { fos ->
                 val buffer = ByteArray(8192)
@@ -96,33 +119,37 @@ class BluetoothClient {
 
     // -------- DELETE --------
     suspend fun delete(path: String, useRoot: Boolean = false): Boolean = withContext(Dispatchers.IO) {
-        sendCommand(BtCommand("DELETE", path = path, useRoot = useRoot))?.success ?: false
+        try { sendCommand(BtCommand("DELETE", path = path, useRoot = useRoot))?.success ?: false }
+        catch (e: Exception) { false }
     }
 
     // -------- RENAME --------
     suspend fun rename(oldPath: String, newPath: String, useRoot: Boolean = false): Boolean = withContext(Dispatchers.IO) {
-        sendCommand(BtCommand("RENAME", path = oldPath, newPath = newPath, useRoot = useRoot))?.success ?: false
+        try { sendCommand(BtCommand("RENAME", path = oldPath, newPath = newPath, useRoot = useRoot))?.success ?: false }
+        catch (e: Exception) { false }
     }
 
     // -------- MKDIR --------
     suspend fun mkdir(path: String, useRoot: Boolean = false): Boolean = withContext(Dispatchers.IO) {
-        sendCommand(BtCommand("MKDIR", path = path, useRoot = useRoot))?.success ?: false
+        try { sendCommand(BtCommand("MKDIR", path = path, useRoot = useRoot))?.success ?: false }
+        catch (e: Exception) { false }
     }
 
     // -------- ROOT STATUS --------
     suspend fun getRootStatus(): Boolean = withContext(Dispatchers.IO) {
-        sendCommand(BtCommand("ROOT_STATUS"))?.isRoot ?: false
+        try { sendCommand(BtCommand("ROOT_STATUS"))?.isRoot ?: false }
+        catch (e: Exception) { false }
     }
 
-    // -------- פונקציות פנימיות --------
+    // -------- INTERNAL --------
     private fun sendCommand(cmd: BtCommand): BtResponse? {
         sendRaw(cmd.toJson())
         return receiveJson()
     }
 
     private fun sendRaw(json: String) {
-        val out = output ?: throw IOException("Not connected")
-        val bytes = json.toByteArray()
+        val out = output ?: throw IOException("לא מחובר")
+        val bytes = json.toByteArray(Charsets.UTF_8)
         out.writeInt(bytes.size)
         out.write(bytes)
         out.flush()
@@ -132,9 +159,10 @@ class BluetoothClient {
         return try {
             val inp = input ?: return null
             val len = inp.readInt()
+            if (len <= 0 || len > 10_000_000) return null
             val bytes = ByteArray(len)
             inp.readFully(bytes)
-            BtResponse.fromJson(String(bytes))
+            BtResponse.fromJson(String(bytes, Charsets.UTF_8))
         } catch (e: Exception) {
             Log.e(TAG, "receiveJson error: ${e.message}")
             null

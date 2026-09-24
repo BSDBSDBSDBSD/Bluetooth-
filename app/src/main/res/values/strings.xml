@@ -1,4 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">BT Explorer</string>
+    <string name="btn_start_server">הפעל שרת</string>
+    <string name="btn_connect_bt">התחבר דרך Bluetooth</string>
+    <string name="btn_connect_wifi">התחבר דרך WiFi Direct</string>
+    <string name="server_running">שרת פעיל</string>
+    <string name="server_stopped">שרת כבוי</string>
+    <string name="root_available">Root זמין</string>
+    <string name="root_unavailable">ללא Root</string>
+    <string name="connecting">מתחבר...</string>
+    <string name="connection_failed">חיבור נכשל</string>
+    <string name="download">הורד</string>
+    <string name="cancel">ביטול</string>
+    <string name="delete">מחק</string>
+    <string name="rename">שנה שם</string>
+    <string name="empty_folder">תיקייה ריקה</string>
+    <string name="scan_devices">חפש מכשירים חדשים</string>
 </resources>

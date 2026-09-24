@@ -21,6 +21,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var btnStartServer: Button
     private lateinit var btnConnect: Button
+    private lateinit var btnConnectWifi: Button
     private lateinit var switchRoot: Switch
     private lateinit var tvStatus: TextView
     private lateinit var tvRootStatus: TextView
@@ -33,20 +34,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        btnStartServer = findViewById(R.id.btnStartServer)
-        btnConnect     = findViewById(R.id.btnConnect)
-        switchRoot     = findViewById(R.id.switchRoot)
-        tvStatus       = findViewById(R.id.tvStatus)
-        tvRootStatus   = findViewById(R.id.tvRootStatus)
-        statusDot      = findViewById(R.id.statusDot)
+        btnStartServer  = findViewById(R.id.btnStartServer)
+        btnConnect      = findViewById(R.id.btnConnect)
+        btnConnectWifi  = findViewById(R.id.btnConnectWifi)
+        switchRoot      = findViewById(R.id.switchRoot)
+        tvStatus        = findViewById(R.id.tvStatus)
+        tvRootStatus    = findViewById(R.id.tvRootStatus)
+        statusDot       = findViewById(R.id.statusDot)
 
-        // Root בthread נפרד - לא יגרום לקריסה
+        // Root בthread נפרד — לא יגרום לקריסה
         Thread {
-            try {
-                RootManager.init()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            try { RootManager.init() } catch (e: Exception) { e.printStackTrace() }
             runOnUiThread { updateRootStatus() }
         }.start()
 
@@ -62,12 +60,22 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, DeviceScanActivity::class.java))
         }
 
-        // בקשת הרשאות בלי לקרוס
+        btnConnectWifi.setOnClickListener {
+            startActivity(Intent(this, WifiScanActivity::class.java))
+        }
+
+        // הרשאות Bluetooth מייד
         requestBluetoothPermissions()
-        requestStoragePermission()
+        // הרשאות Storage עם דיליי — ימנע קריסה
+        Handler(Looper.getMainLooper()).postDelayed({
+            if (!isDestroyed && !isFinishing) {
+                requestStoragePermission()
+            }
+        }, 800)
     }
 
     private fun updateRootStatus() {
+        if (isDestroyed || isFinishing) return
         if (RootManager.isRootAvailable) {
             tvRootStatus.text = "✅ Root זמין — גישה מלאה למערכת קבצים"
             switchRoot.isEnabled = true
@@ -86,58 +94,69 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestBluetoothPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val perms = arrayOf(
-                Manifest.permission.BLUETOOTH_CONNECT,
-                Manifest.permission.BLUETOOTH_SCAN,
-                Manifest.permission.BLUETOOTH_ADVERTISE
-            )
-            val denied = perms.filter {
-                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val perms = arrayOf(
+                    Manifest.permission.BLUETOOTH_CONNECT,
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    Manifest.permission.BLUETOOTH_ADVERTISE
+                )
+                val denied = perms.filter {
+                    ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+                }
+                if (denied.isNotEmpty()) {
+                    ActivityCompat.requestPermissions(this, denied.toTypedArray(), PERM_REQUEST)
+                }
             }
-            if (denied.isNotEmpty()) {
-                ActivityCompat.requestPermissions(this, denied.toTypedArray(), PERM_REQUEST)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(
+                        this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), PERM_REQUEST
+                    )
+                }
             }
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                    arrayOf(Manifest.permission.POST_NOTIFICATIONS), PERM_REQUEST)
-            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     private fun requestStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()) {
-                AlertDialog.Builder(this)
-                    .setTitle("הרשאת גישה לקבצים")
-                    .setMessage("לגישה מלאה לאחסון, אשר את הרשאת 'ניהול כל הקבצים'.\nניתן גם לדלג — האפליקציה תעבוד עם גישה חלקית.")
-                    .setPositiveButton("אשר") { _, _ ->
-                        try {
-                            startActivity(Intent(
-                                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
-                                Uri.parse("package:$packageName")
-                            ))
-                        } catch (e: Exception) {
-                            startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                if (!Environment.isExternalStorageManager()) {
+                    AlertDialog.Builder(this)
+                        .setTitle("הרשאת גישה לקבצים")
+                        .setMessage("לגישה מלאה לאחסון, אשר את הרשאת 'ניהול כל הקבצים'.\nניתן גם לדלג — האפליקציה תעבוד עם גישה חלקית.")
+                        .setPositiveButton("אשר") { _, _ ->
+                            try {
+                                startActivity(Intent(
+                                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                    Uri.parse("package:$packageName")
+                                ))
+                            } catch (e: Exception) {
+                                try {
+                                    startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                                } catch (e2: Exception) { }
+                            }
                         }
-                    }
-                    .setNegativeButton("דלג", null)
-                    .show()
+                        .setNegativeButton("דלג", null)
+                        .show()
+                }
+            } else {
+                val perms = arrayOf(
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                )
+                val denied = perms.filter {
+                    ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+                }
+                if (denied.isNotEmpty()) {
+                    ActivityCompat.requestPermissions(this, denied.toTypedArray(), STORAGE_PERM_REQUEST)
+                }
             }
-        } else {
-            val perms = arrayOf(
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            )
-            val denied = perms.filter {
-                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-            }
-            if (denied.isNotEmpty()) {
-                ActivityCompat.requestPermissions(this, denied.toTypedArray(), STORAGE_PERM_REQUEST)
-            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
@@ -145,7 +164,7 @@ class MainActivity : AppCompatActivity() {
         requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        // לא עושים כלום שיגרום לקריסה — האפליקציה תמשיך לעבוד
+        // אל תעשה כלום שיגרום לקריסה
     }
 
     private fun startServer() {
@@ -167,9 +186,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopServer() {
-        startService(Intent(this, BluetoothServerService::class.java).apply {
-            action = BluetoothServerService.ACTION_STOP_SERVER
-        })
+        try {
+            startService(Intent(this, BluetoothServerService::class.java).apply {
+                action = BluetoothServerService.ACTION_STOP_SERVER
+            })
+        } catch (e: Exception) {}
         setServerUI(false)
     }
 

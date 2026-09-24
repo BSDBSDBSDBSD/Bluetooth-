@@ -3,24 +3,24 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#121212">
+    android:background="#0F1923">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#1E1E1E"
-        android:padding="8dp">
-
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="#1A2535">
         <TextView
             android:id="@+id/tvConnected"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textColor="#1DB954"
-            android:textStyle="bold"
-            android:textSize="14sp"/>
-
+            android:text="מחובר"
+            android:textSize="14sp"
+            android:textColor="#4CAF50"
+            android:textStyle="bold"/>
         <ProgressBar
             android:id="@+id/progressBar"
             android:layout_width="24dp"
@@ -32,17 +32,30 @@
         android:id="@+id/tvCurrentPath"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="8dp"
-        android:textColor="#888888"
+        android:padding="10dp"
+        android:text="/storage/emulated/0"
         android:textSize="12sp"
+        android:textColor="#888888"
+        android:background="#0A0F17"
         android:singleLine="true"
-        android:ellipsize="start"
-        android:background="#1A1A1A"/>
+        android:ellipsize="start"/>
+
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="24dp"
+        android:text="תיקייה ריקה"
+        android:textColor="#555555"
+        android:textSize="16sp"
+        android:gravity="center"
+        android:visibility="gone"/>
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerFiles"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"/>
+        android:layout_weight="1"
+        android:background="#0F1923"/>
 
 </LinearLayout>

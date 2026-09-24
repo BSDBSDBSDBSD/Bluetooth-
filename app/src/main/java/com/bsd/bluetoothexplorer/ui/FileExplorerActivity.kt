@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.os.*
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -12,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bsd.bluetoothexplorer.R
 import com.bsd.bluetoothexplorer.model.FileItem
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import java.io.File
 
 class FileExplorerActivity : AppCompatActivity() {
@@ -20,12 +22,14 @@ class FileExplorerActivity : AppCompatActivity() {
     private lateinit var tvPath: TextView
     private lateinit var tvConnected: TextView
     private lateinit var progressBar: ProgressBar
+    private lateinit var tvEmpty: TextView
     private lateinit var fileAdapter: FileAdapter
 
     private val client get() = ClientHolder.client
     private val pathStack = ArrayDeque<String>()
     private var useRoot = false
     private var currentPath = "/storage/emulated/0"
+    private var isLoading = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,6 +39,13 @@ class FileExplorerActivity : AppCompatActivity() {
         tvPath       = findViewById(R.id.tvCurrentPath)
         tvConnected  = findViewById(R.id.tvConnected)
         progressBar  = findViewById(R.id.progressBar)
+        tvEmpty      = findViewById(R.id.tvEmpty)
+
+        if (client == null) {
+            Toast.makeText(this, "שגיאה: אין חיבור פעיל", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
 
         tvConnected.text = "📱 ${ClientHolder.remoteDeviceName}"
 
@@ -47,29 +58,51 @@ class FileExplorerActivity : AppCompatActivity() {
 
         // בדיקת root בשרת
         lifecycleScope.launch {
-            val remoteRoot = client?.getRootStatus() ?: false
-            runOnUiThread {
-                if (remoteRoot) {
-                    Toast.makeText(this@FileExplorerActivity, "✅ שרת עם Root", Toast.LENGTH_SHORT).show()
+            try {
+                val remoteRoot = withTimeout(5000) { client?.getRootStatus() ?: false }
+                if (!isDestroyed && !isFinishing && remoteRoot) {
+                    runOnUiThread {
+                        Toast.makeText(this@FileExplorerActivity, "✅ שרת עם Root", Toast.LENGTH_SHORT).show()
+                    }
                 }
-            }
+            } catch (e: Exception) { }
         }
 
         loadDir(currentPath)
     }
 
     private fun loadDir(path: String) {
+        if (isLoading) return
+        if (client == null) {
+            Toast.makeText(this, "החיבור נסגר", Toast.LENGTH_SHORT).show()
+            finish()
+            return
+        }
+        isLoading = true
         showLoading(true)
         tvPath.text = path
+        tvEmpty.visibility = View.GONE
+
         lifecycleScope.launch {
-            val files = client?.listDir(path, useRoot) ?: emptyList()
-            runOnUiThread {
-                showLoading(false)
-                if (files.isEmpty() && !useRoot) {
-                    // נסה root אוטומטית אם הרגיל ריק
+            val files = try {
+                withTimeout(15_000) { client?.listDir(path, useRoot) ?: emptyList() }
+            } catch (e: Exception) {
+                emptyList<FileItem>()
+            }
+
+            if (!isDestroyed && !isFinishing) {
+                runOnUiThread {
+                    isLoading = false
+                    showLoading(false)
+                    fileAdapter.setFiles(files)
+                    currentPath = path
+                    if (files.isEmpty()) {
+                        tvEmpty.visibility = View.VISIBLE
+                        tvEmpty.text = if (path == "/") "הפעל Root לגישה לתיקיית שורש" else "תיקייה ריקה"
+                    }
                 }
-                fileAdapter.setFiles(files)
-                currentPath = path
+            } else {
+                isLoading = false
             }
         }
     }
@@ -99,28 +132,40 @@ class FileExplorerActivity : AppCompatActivity() {
             item.name
         )
         showLoading(true)
+        isLoading = true
         lifecycleScope.launch {
-            val success = client?.getFile(
-                remotePath = item.path,
-                localFile = localFile,
-                useRoot = useRoot,
-                onProgress = { received, total ->
-                    runOnUiThread {
-                        val pct = if (total > 0) (received * 100 / total).toInt() else 0
-                        tvPath.text = "מוריד... $pct% (${formatSize(received)}/${formatSize(total)})"
+            val success = try {
+                withTimeout(60_000) {
+                    client?.getFile(
+                        remotePath = item.path,
+                        localFile = localFile,
+                        useRoot = useRoot,
+                        onProgress = { received, total ->
+                            if (!isDestroyed) {
+                                runOnUiThread {
+                                    val pct = if (total > 0) (received * 100 / total).toInt() else 0
+                                    tvPath.text = "מוריד... $pct%"
+                                }
+                            }
+                        }
+                    ) ?: false
+                }
+            } catch (e: Exception) { false }
+
+            if (!isDestroyed && !isFinishing) {
+                runOnUiThread {
+                    isLoading = false
+                    showLoading(false)
+                    tvPath.text = currentPath
+                    if (success) {
+                        Toast.makeText(this@FileExplorerActivity,
+                            "✅ הורד ל: Downloads/${item.name}", Toast.LENGTH_LONG).show()
+                    } else {
+                        Toast.makeText(this@FileExplorerActivity, "❌ ההורדה נכשלה", Toast.LENGTH_SHORT).show()
                     }
                 }
-            ) ?: false
-
-            runOnUiThread {
-                showLoading(false)
-                tvPath.text = currentPath
-                if (success) {
-                    Toast.makeText(this@FileExplorerActivity,
-                        "✅ הורד ל: ${localFile.absolutePath}", Toast.LENGTH_LONG).show()
-                } else {
-                    Toast.makeText(this@FileExplorerActivity, "❌ ההורדה נכשלה", Toast.LENGTH_SHORT).show()
-                }
+            } else {
+                isLoading = false
             }
         }
     }
@@ -148,8 +193,8 @@ class FileExplorerActivity : AppCompatActivity() {
             .setMessage("למחוק את '${item.name}'? פעולה זו אינה הפיכה.")
             .setPositiveButton("מחק") { _, _ ->
                 lifecycleScope.launch {
-                    val ok = client?.delete(item.path, useRoot) ?: false
-                    runOnUiThread {
+                    val ok = try { client?.delete(item.path, useRoot) ?: false } catch (e: Exception) { false }
+                    if (!isDestroyed) runOnUiThread {
                         if (ok) loadDir(currentPath)
                         else Toast.makeText(this@FileExplorerActivity, "מחיקה נכשלה", Toast.LENGTH_SHORT).show()
                     }
@@ -159,7 +204,12 @@ class FileExplorerActivity : AppCompatActivity() {
     }
 
     private fun showRenameDialog(item: FileItem) {
-        val input = EditText(this).apply { setText(item.name) }
+        val input = EditText(this).apply {
+            setText(item.name)
+            setTextColor(0xFFFFFFFF.toInt())
+            setHintTextColor(0xFF888888.toInt())
+            setPadding(24, 16, 24, 16)
+        }
         AlertDialog.Builder(this)
             .setTitle("שנה שם")
             .setView(input)
@@ -168,8 +218,8 @@ class FileExplorerActivity : AppCompatActivity() {
                 if (newName.isBlank()) return@setPositiveButton
                 val newPath = item.path.substringBeforeLast("/") + "/$newName"
                 lifecycleScope.launch {
-                    val ok = client?.rename(item.path, newPath, useRoot) ?: false
-                    runOnUiThread {
+                    val ok = try { client?.rename(item.path, newPath, useRoot) ?: false } catch (e: Exception) { false }
+                    if (!isDestroyed) runOnUiThread {
                         if (ok) loadDir(currentPath)
                         else Toast.makeText(this@FileExplorerActivity, "שינוי שם נכשל", Toast.LENGTH_SHORT).show()
                     }
@@ -179,7 +229,12 @@ class FileExplorerActivity : AppCompatActivity() {
     }
 
     private fun showNewFolderDialog() {
-        val input = EditText(this).apply { hint = "שם התיקייה" }
+        val input = EditText(this).apply {
+            hint = "שם התיקייה"
+            setTextColor(0xFFFFFFFF.toInt())
+            setHintTextColor(0xFF888888.toInt())
+            setPadding(24, 16, 24, 16)
+        }
         AlertDialog.Builder(this)
             .setTitle("תיקייה חדשה")
             .setView(input)
@@ -187,8 +242,8 @@ class FileExplorerActivity : AppCompatActivity() {
                 val name = input.text.toString().trim()
                 if (name.isBlank()) return@setPositiveButton
                 lifecycleScope.launch {
-                    val ok = client?.mkdir("$currentPath/$name", useRoot) ?: false
-                    runOnUiThread {
+                    val ok = try { client?.mkdir("$currentPath/$name", useRoot) ?: false } catch (e: Exception) { false }
+                    if (!isDestroyed) runOnUiThread {
                         if (ok) loadDir(currentPath)
                         else Toast.makeText(this@FileExplorerActivity, "יצירה נכשלה", Toast.LENGTH_SHORT).show()
                     }
@@ -197,6 +252,7 @@ class FileExplorerActivity : AppCompatActivity() {
             .setNegativeButton("ביטול", null).show()
     }
 
+    @Deprecated("Deprecated")
     override fun onBackPressed() {
         if (pathStack.isNotEmpty()) {
             loadDir(pathStack.removeLast())
@@ -214,7 +270,7 @@ class FileExplorerActivity : AppCompatActivity() {
         return when (item.itemId) {
             R.id.menuRoot -> {
                 useRoot = !useRoot
-                item.title = if (useRoot) "Root: ON" else "Root: OFF"
+                item.title = if (useRoot) "Root: פעיל ✅" else "Root: כבוי"
                 Toast.makeText(this, if (useRoot) "מצב Root פעיל" else "מצב Root כבוי", Toast.LENGTH_SHORT).show()
                 loadDir(currentPath)
                 true
@@ -242,7 +298,7 @@ class FileExplorerActivity : AppCompatActivity() {
     }
 
     private fun showLoading(show: Boolean) {
-        progressBar.visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
+        progressBar.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     private fun formatSize(bytes: Long): String {

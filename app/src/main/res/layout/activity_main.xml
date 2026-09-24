@@ -8,17 +8,23 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
+        android:orientation="vertical"
         android:padding="20dp"
         android:background="#1A2535">
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="📁 סייר קבצים Bluetooth"
-            android:textSize="20sp"
+            android:text="📁 סייר קבצים BT"
+            android:textSize="22sp"
             android:textStyle="bold"
             android:textColor="#FFFFFF"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="גישה לקבצים במכשיר מרוחק"
+            android:textSize="13sp"
+            android:textColor="#AAAAAA"
+            android:layout_marginTop="2dp"/>
     </LinearLayout>
 
     <LinearLayout
@@ -29,20 +35,20 @@
         android:layout_margin="16dp"
         android:padding="14dp"
         android:background="@drawable/card_bg">
+        <View
+            android:id="@+id/statusDot"
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/dot_red"
+            android:layout_marginEnd="10dp"/>
         <TextView
-            android:id="@+id/tvRootStatus"
+            android:id="@+id/tvStatus"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="בודק הרשאות Root..."
-            android:textSize="14sp"
-            android:textColor="#CCCCCC"/>
-        <Switch
-            android:id="@+id/switchRoot"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Root"
-            android:textColor="#FFFFFF"/>
+            android:text="שרת כבוי"
+            android:textColor="#AAAAAA"
+            android:textSize="14sp"/>
     </LinearLayout>
 
     <LinearLayout
@@ -50,22 +56,26 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="12dp">
-        <View
-            android:id="@+id/statusDot"
-            android:layout_width="10dp"
-            android:layout_height="10dp"
-            android:background="@drawable/dot_red"
-            android:layout_marginEnd="8dp"/>
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp"
+        android:padding="14dp"
+        android:background="@drawable/card_bg">
         <TextView
-            android:id="@+id/tvStatus"
+            android:id="@+id/tvRootStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="בודק הרשאות Root..."
+            android:textSize="13sp"
+            android:textColor="#CCCCCC"/>
+        <Switch
+            android:id="@+id/switchRoot"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="שרת כבוי"
-            android:textColor="#AAAAAA"
-            android:textSize="14sp"/>
+            android:text="Root"
+            android:textColor="#FFFFFF"
+            android:enabled="false"/>
     </LinearLayout>
 
     <Button
@@ -74,9 +84,9 @@
         android:layout_height="56dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginBottom="12dp"
-        android:text="הפעל שרת"
-        android:textSize="16sp"
+        android:layout_marginBottom="10dp"
+        android:text="הפעל שרת (מכשיר נגיש)"
+        android:textSize="15sp"
         android:textStyle="bold"
         android:backgroundTint="#1DB954"
         android:textColor="#FFFFFF"/>
@@ -84,19 +94,33 @@
     <Button
         android:id="@+id/btnConnect"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="52dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:text="התחבר למכשיר אחר"
-        android:textSize="16sp"
+        android:layout_marginBottom="10dp"
+        android:text="התחבר דרך Bluetooth"
+        android:textSize="15sp"
         android:backgroundTint="#2563EB"
+        android:textColor="#FFFFFF"/>
+
+    <Button
+        android:id="@+id/btnConnectWifi"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:text="התחבר דרך WiFi Direct"
+        android:textSize="15sp"
+        android:backgroundTint="#7C3AED"
         android:textColor="#FFFFFF"/>
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_margin="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
         android:padding="14dp"
         android:background="@drawable/card_bg">
         <TextView
@@ -106,11 +130,11 @@
             android:textColor="#FFFFFF"
             android:textStyle="bold"
             android:textSize="14sp"
-            android:layout_marginBottom="6dp"/>
+            android:layout_marginBottom="8dp"/>
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="1. מכשיר שנגישים אליו: הפעל שרת\n2. מכשיר מדפדף: לחץ התחבר\n3. בחר מכשיר מהרשימה\n4. גלוש בקבצים"
+            android:text="1. מכשיר שגישים אליו: הפעל שרת\n2. מכשיר מדפדף: התחבר דרך BT או WiFi\n3. בחר מכשיר מהרשימה\n4. גלוש וצפה בקבצים"
             android:textColor="#AAAAAA"
             android:textSize="13sp"
             android:lineSpacingExtra="4dp"/>
